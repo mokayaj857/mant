@@ -9,11 +9,91 @@ const AVARA_CORE_ADDRESS = import.meta.env.VITE_AVARA_CORE_ADDRESS || '';
 const TICKET_NFT_ADDRESS = import.meta.env.VITE_TICKET_NFT_ADDRESS || '';
 const POAP_NFT_ADDRESS = import.meta.env.VITE_POAP_NFT_ADDRESS || '';
 
-export const resolveContractAddresses = (overrides = {}) => {
+// Cache for contract addresses fetched from server
+let cachedAddresses = null;
+let addressFetchPromise = null;
+
+/**
+ * Fetch contract addresses from server API
+ * @returns {Promise<Object>} Contract addresses
+ */
+const fetchContractAddressesFromServer = async () => {
+  if (cachedAddresses) {
+    return cachedAddresses;
+  }
+
+  if (addressFetchPromise) {
+    return addressFetchPromise;
+  }
+
+  addressFetchPromise = (async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const baseUrl = apiUrl || window.location.origin;
+      const response = await fetch(`${baseUrl}/api/contracts/config`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch contract config: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        cachedAddresses = {
+          AVARA_CORE: result.data.avaraCore || '',
+          TICKET_NFT: result.data.ticketNFT || '',
+          POAP_NFT: result.data.poapNFT || '',
+        };
+        return cachedAddresses;
+      }
+      
+      return null;
+    } catch (error) {
+      console.warn('Failed to fetch contract addresses from server:', error);
+      return null;
+    } finally {
+      addressFetchPromise = null;
+    }
+  })();
+
+  return addressFetchPromise;
+};
+
+/**
+ * Resolve contract addresses from env vars, server API, or overrides
+ * @param {Object} overrides - Override addresses
+ * @returns {Promise<Object>} Contract addresses
+ */
+export const resolveContractAddresses = async (overrides = {}) => {
+  // Use overrides if provided
+  if (overrides?.AVARA_CORE || overrides?.avaraCore) {
+    return {
+      AVARA_CORE: overrides.AVARA_CORE || overrides.avaraCore,
+      TICKET_NFT: overrides.TICKET_NFT || overrides.ticketNFT,
+      POAP_NFT: overrides.POAP_NFT || overrides.poapNFT,
+    };
+  }
+
+  // Check if env vars are set
+  if (AVARA_CORE_ADDRESS && TICKET_NFT_ADDRESS && POAP_NFT_ADDRESS) {
+    return {
+      AVARA_CORE: AVARA_CORE_ADDRESS,
+      TICKET_NFT: TICKET_NFT_ADDRESS,
+      POAP_NFT: POAP_NFT_ADDRESS,
+    };
+  }
+
+  // Try to fetch from server
+  const serverAddresses = await fetchContractAddressesFromServer();
+  if (serverAddresses) {
+    return serverAddresses;
+  }
+
+  // Fallback to env vars (may be empty)
   return {
-    AVARA_CORE: overrides?.AVARA_CORE ?? overrides?.avaraCore ?? AVARA_CORE_ADDRESS,
-    TICKET_NFT: overrides?.TICKET_NFT ?? overrides?.ticketNFT ?? TICKET_NFT_ADDRESS,
-    POAP_NFT: overrides?.POAP_NFT ?? overrides?.poapNFT ?? POAP_NFT_ADDRESS,
+    AVARA_CORE: AVARA_CORE_ADDRESS,
+    TICKET_NFT: TICKET_NFT_ADDRESS,
+    POAP_NFT: POAP_NFT_ADDRESS,
   };
 };
 
@@ -26,7 +106,7 @@ const assertAddressesConfigured = (addresses) => {
     throw new Error(
       `Missing contract address(es): ${missing.join(', ')}. ` +
         `Set VITE_AVARA_CORE_ADDRESS / VITE_TICKET_NFT_ADDRESS / VITE_POAP_NFT_ADDRESS ` +
-        `or provide them via /api/contracts/config.`
+        `in your .env file or configure them on the server via /api/contracts/config.`
     );
   }
 };
@@ -35,14 +115,15 @@ const assertAddressesConfigured = (addresses) => {
  * Get contract instances
  * @param {ethers.BrowserProvider} provider - Ethers provider
  * @param {ethers.Signer} signer - Ethers signer (optional, for write operations)
- * @returns {Object} Contract instances
+ * @param {Object} addressOverrides - Override contract addresses
+ * @returns {Promise<Object>} Contract instances
  */
-export const getContracts = (provider, signer = null, addressOverrides = null) => {
+export const getContracts = async (provider, signer = null, addressOverrides = null) => {
   if (!provider) {
     throw new Error('Provider is required');
   }
 
-  const addresses = resolveContractAddresses(addressOverrides || {});
+  const addresses = await resolveContractAddresses(addressOverrides || {});
   assertAddressesConfigured(addresses);
 
   const contractProvider = signer || provider;
@@ -75,15 +156,16 @@ export const getContracts = (provider, signer = null, addressOverrides = null) =
 /**
  * Get contract instances with signer (for write operations)
  * @param {ethers.BrowserProvider} provider - Ethers provider
+ * @param {Object} addressOverrides - Override contract addresses
  * @returns {Promise<Object>} Contract instances with signer
  */
-export const getContractsWithSigner = async (provider) => {
+export const getContractsWithSigner = async (provider, addressOverrides = null) => {
   if (!provider) {
     throw new Error('Provider is required');
   }
 
   const signer = await provider.getSigner();
-  return getContracts(provider, signer);
+  return getContracts(provider, signer, addressOverrides);
 };
 
 /**

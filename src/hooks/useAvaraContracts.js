@@ -45,8 +45,8 @@ export const useAvaraContracts = () => {
         const browserProvider = new ethers.BrowserProvider(ethereumProvider);
         setProvider(browserProvider);
 
-        // Get read-only contracts
-        const readOnlyContracts = getContracts(browserProvider);
+        // Get read-only contracts (now async)
+        const readOnlyContracts = await getContracts(browserProvider);
         setContracts(readOnlyContracts);
 
         // Get contracts with signer if wallet is connected

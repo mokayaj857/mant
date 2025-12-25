@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
+import { getExpectedChainId, isCorrectNetwork as checkCorrectNetwork } from '../utils/networkConfig';
 
 const WalletContext = createContext();
 
@@ -84,8 +85,9 @@ export const WalletProvider = ({ children }) => {
   const [walletAddress, setWalletAddress] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [networkId, setNetworkId] = useState(null);
+  const [isCorrectNetwork, setIsCorrectNetwork] = useState(false);
 
-  const EXPECTED_CHAIN_ID = Number(import.meta.env.VITE_EXPECTED_CHAIN_ID || 0) || null;
+  const EXPECTED_CHAIN_ID = getExpectedChainId();
 
   const handleAccountsChanged = useCallback((accounts) => {
     if (accounts.length > 0) {
@@ -101,7 +103,8 @@ export const WalletProvider = ({ children }) => {
       ? parseInt(chainId, 16) 
       : Number(chainId);
     setNetworkId(numericChainId);
-  }, []);
+    setIsCorrectNetwork(checkCorrectNetwork(numericChainId, EXPECTED_CHAIN_ID));
+  }, [EXPECTED_CHAIN_ID]);
 
   const handleDisconnect = useCallback(() => {
     setWalletAddress(null);
@@ -121,12 +124,14 @@ export const WalletProvider = ({ children }) => {
         // Also get network info
         const provider = new ethers.BrowserProvider(ethereumProvider);
         const network = await provider.getNetwork();
-        setNetworkId(Number(network.chainId));
+        const chainId = Number(network.chainId);
+        setNetworkId(chainId);
+        setIsCorrectNetwork(checkCorrectNetwork(chainId, EXPECTED_CHAIN_ID));
       }
     } catch (error) {
       console.error("Error checking wallet connection:", error);
     }
-  }, []);
+  }, [EXPECTED_CHAIN_ID]);
 
   // Check wallet connection on mount
   useEffect(() => {
@@ -166,9 +171,11 @@ export const WalletProvider = ({ children }) => {
         const signer = await provider.getSigner();
         const address = await signer.getAddress();
         const network = await provider.getNetwork();
+        const chainId = Number(network.chainId);
         
         setWalletAddress(address);
-        setNetworkId(Number(network.chainId));
+        setNetworkId(chainId);
+        setIsCorrectNetwork(checkCorrectNetwork(chainId, EXPECTED_CHAIN_ID));
         
         return address;
       }
@@ -196,6 +203,7 @@ export const WalletProvider = ({ children }) => {
     walletAddress,
     isConnecting,
     networkId,
+    isCorrectNetwork,
     connectWallet,
     disconnectWallet,
     isConnected,
