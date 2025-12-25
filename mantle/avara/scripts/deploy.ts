@@ -35,9 +35,9 @@ async function main() {
   const balance = await publicClient.getBalance({ address: deployerAddress });
   console.log("Account balance:", balance.toString());
 
-  // Get KRNL signer address from env or use deployer as fallback
-  const krnlSigner = process.env.KRNL_SIGNER || deployerAddress;
-  console.log("KRNL Signer address:", krnlSigner);
+  // Get Mantle signer address from env or use deployer as fallback
+  const mantleSigner = process.env.MANTLE_SIGNER || process.env.KRNL_SIGNER || deployerAddress; // Backward compatibility
+  console.log("Mantle Signer address:", mantleSigner);
 
   // Deploy AvaraCore - it will deploy POAPNFT and TicketNFT internally
   console.log("\nDeploying AvaraCore (this will also deploy POAPNFT and TicketNFT)...");
@@ -45,7 +45,7 @@ async function main() {
   const deployHash = await walletClient.deployContract({
     abi: avaraArtifact.abi,
     bytecode: avaraArtifact.bytecode as `0x${string}`,
-    args: [krnlSigner as `0x${string}`],
+    args: [mantleSigner as `0x${string}`],
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash: deployHash });
@@ -107,7 +107,8 @@ async function main() {
       AvaraCore: avaraCoreAddress,
       POAPNFT: poapNFTAddress,
       TicketNFT: ticketNFTAddress,
-      KRNL_SIGNER: krnlSigner
+      MANTLE_SIGNER: mantleSigner,
+      KRNL_SIGNER: mantleSigner // Backward compatibility
     },
     timestamp: new Date().toISOString()
   };

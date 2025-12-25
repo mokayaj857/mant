@@ -8,7 +8,7 @@ const { ethers } = require('ethers');
 const SERVER_API_URL = process.env.SERVER_API_URL || 'http://localhost:8080';
 const RPC_URL = process.env.RPC_URL || process.env.CHAIN_RPC_URL || 'https://api.avax.network/ext/bc/C/rpc';
 const AVARA_CORE_ADDRESS = process.env.AVARA_CORE_ADDRESS || '';
-const KRNL_PRIVATE_KEY = process.env.KRNL_PRIVATE_KEY || '';
+const MANTLE_PRIVATE_KEY = process.env.MANTLE_PRIVATE_KEY || '';
 
 // Helper function to make HTTP requests
 function makeRequest(urlStr, options = {}) {
@@ -102,7 +102,7 @@ async function testServerConnection() {
         console.log(`   - AvaraCore: ${configData.data.avaraCore || 'Not configured'}`);
         console.log(`   - TicketNFT: ${configData.data.ticketNFT || 'Not configured'}`);
         console.log(`   - POAPNFT: ${configData.data.poapNFT || 'Not configured'}`);
-        console.log(`   - KRNL Signer: ${configData.data.krnlSigner || 'Not configured'}`);
+        console.log(`   - Mantle Signer: ${configData.data.mantleSigner || 'Not configured'}`);
         console.log(`   - Chain ID: ${configData.data.chainId || 'Not configured'}`);
       }
     } else {
@@ -151,11 +151,11 @@ async function testSmartContractConnection() {
           
           // Try to get contract info
           const AvaraCoreABI = [
-            "function krnlSigner() view returns (address)"
+            "function krnlSigner() view returns (address)" // Note: Contract function name is immutable
           ];
           const contract = new ethers.Contract(AVARA_CORE_ADDRESS, AvaraCoreABI, provider);
-          const signer = await contract.krnlSigner();
-          console.log(`   - KRNL Signer: ${signer}`);
+          const signer = await contract.krnlSigner(); // Contract still uses krnlSigner() name
+          console.log(`   - Mantle Signer: ${signer}`);
         } else {
           console.log(`❌ No contract found at: ${AVARA_CORE_ADDRESS}`);
         }
@@ -166,10 +166,10 @@ async function testSmartContractConnection() {
       console.log('⚠️  AVARA_CORE_ADDRESS not configured');
     }
     
-    if (KRNL_PRIVATE_KEY) {
+    if (MANTLE_PRIVATE_KEY) {
       console.log('\n3. Testing wallet/signer...');
       try {
-        const wallet = new ethers.Wallet(KRNL_PRIVATE_KEY, provider);
+        const wallet = new ethers.Wallet(MANTLE_PRIVATE_KEY, provider);
         const address = await wallet.getAddress();
         const balance = await provider.getBalance(address);
         console.log(`✅ Wallet initialized`);
@@ -179,7 +179,7 @@ async function testSmartContractConnection() {
         console.log(`❌ Wallet initialization failed: ${error.message}`);
       }
     } else {
-      console.log('⚠️  KRNL_PRIVATE_KEY not configured');
+      console.log('⚠️  MANTLE_PRIVATE_KEY not configured');
     }
     
     return true;
@@ -223,14 +223,14 @@ async function testSMSATIntegration() {
     console.log(`❌ Event fetching logic failed: ${error.message}`);
   }
   
-  // Test KRNL mint-proof endpoint
-  console.log('\n2. Testing KRNL mint-proof endpoint...');
-  if (KRNL_PRIVATE_KEY) {
+  // Test Mantle mint-proof endpoint
+  console.log('\n2. Testing Mantle mint-proof endpoint...');
+  if (MANTLE_PRIVATE_KEY) {
     try {
-      const wallet = new ethers.Wallet(KRNL_PRIVATE_KEY);
+      const wallet = new ethers.Wallet(MANTLE_PRIVATE_KEY);
       const testAddress = await wallet.getAddress();
       
-      const krnlRes = await makeRequest(`${SERVER_API_URL}/api/krnl/mint-proof`, {
+      const mantleRes = await makeRequest(`${SERVER_API_URL}/api/mantle/mint-proof`, {
         method: 'POST',
         body: {
           to: testAddress,
@@ -238,24 +238,24 @@ async function testSMSATIntegration() {
         }
       });
       
-      if (krnlRes.ok) {
-        const krnlData = await krnlRes.json();
-        if (krnlData.success && krnlData.data) {
-          console.log(`✅ KRNL mint-proof successful`);
-          console.log(`   - Timestamp: ${krnlData.data.timestamp}`);
-          console.log(`   - Nonce: ${krnlData.data.nonce}`);
-          console.log(`   - Signature: ${krnlData.data.signature.substring(0, 20)}...`);
-          console.log(`   - Signer: ${krnlData.data.signerAddress}`);
+      if (mantleRes.ok) {
+        const mantleData = await mantleRes.json();
+        if (mantleData.success && mantleData.data) {
+          console.log(`✅ Mantle mint-proof successful`);
+          console.log(`   - Timestamp: ${mantleData.data.timestamp}`);
+          console.log(`   - Nonce: ${mantleData.data.nonce}`);
+          console.log(`   - Signature: ${mantleData.data.signature.substring(0, 20)}...`);
+          console.log(`   - Signer: ${mantleData.data.signerAddress}`);
         }
       } else {
-        const errorText = await krnlRes.text();
-        console.log(`❌ KRNL mint-proof failed: ${errorText}`);
+        const errorText = await mantleRes.text();
+        console.log(`❌ Mantle mint-proof failed: ${errorText}`);
       }
     } catch (error) {
-      console.log(`❌ KRNL mint-proof test failed: ${error.message}`);
+      console.log(`❌ Mantle mint-proof test failed: ${error.message}`);
     }
   } else {
-    console.log('⚠️  KRNL_PRIVATE_KEY not configured, skipping KRNL test');
+    console.log('⚠️  MANTLE_PRIVATE_KEY not configured, skipping Mantle test');
   }
 }
 
@@ -265,7 +265,7 @@ async function runAllTests() {
   console.log(`Server URL: ${SERVER_API_URL}`);
   console.log(`RPC URL: ${RPC_URL}`);
   console.log(`AvaraCore: ${AVARA_CORE_ADDRESS || 'Not configured'}`);
-  console.log(`KRNL Key: ${KRNL_PRIVATE_KEY ? 'Configured' : 'Not configured'}`);
+  console.log(`Mantle Key: ${MANTLE_PRIVATE_KEY ? 'Configured' : 'Not configured'}`);
   
   const serverOk = await testServerConnection();
   const contractOk = await testSmartContractConnection();

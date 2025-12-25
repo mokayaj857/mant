@@ -15,14 +15,14 @@ router.post('/mint-proof', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Missing required field: eventId' });
     }
 
-    const privateKey = process.env.KRNL_PRIVATE_KEY;
+    const privateKey = process.env.MANTLE_PRIVATE_KEY;
     if (!privateKey) {
-      return res.status(500).json({ success: false, error: 'KRNL_PRIVATE_KEY not configured on server' });
+      return res.status(500).json({ success: false, error: 'MANTLE_PRIVATE_KEY not configured on server' });
     }
 
     const wallet = new ethers.Wallet(privateKey);
     const signerAddress = await wallet.getAddress();
-    const expectedSigner = process.env.KRNL_SIGNER_ADDRESS;
+    const expectedSigner = process.env.MANTLE_SIGNER_ADDRESS;
     const signerMismatch =
       !!expectedSigner && signerAddress.toLowerCase() !== expectedSigner.toLowerCase();
 
@@ -54,7 +54,7 @@ router.post('/mint-proof', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error creating KRNL mint proof:', error);
+    console.error('Error creating Mantle mint proof:', error);
     return res.status(500).json({ success: false, error: 'Failed to create mint proof', details: error.message });
   }
 });

@@ -3,11 +3,11 @@ pragma solidity ^0.8.24;
 
 /*
 Avara — compact implementation:
-- TicketNFT: ERC721 tickets with provenance and KRNL-signed actions
+- TicketNFT: ERC721 tickets with provenance and Mantle-signed actions
 - POAPBadge: ERC721 POAPs (can be soulbound)
 - Marketplace: simple listing/resale with organizer rules
 - Reputation: increments when POAP issued
-- KRNL integration: verify signatures from trusted KRNL_SIGNER
+- Mantle integration: verify signatures from trusted MANTLE_SIGNER
 
 NOTE: Uses OpenZeppelin contracts. For real deploy, import from npm @openzeppelin/contracts.
 */
@@ -34,17 +34,17 @@ contract AvaraCore is Ownable, ReentrancyGuard {
     event Sale(uint256 indexed ticketId, address indexed buyer, uint256 price);
     event ResaleRuleUpdated(uint256 indexed eventId, uint256 maxPrice, uint16 maxTransfers);
 
-    // --- KRNL signer (off-chain orchestrator) ---
-    address public krnlSigner;
+    // --- Mantle signer (off-chain orchestrator) ---
+    address public mantleSigner; // Note: Keeping krnlSigner variable name for backward compatibility
     
     // --- Storage: instances ---
     TicketNFT public tickets;
     POAPNFT public poaps;
     bool public poapSoulbound = true; // Default to soulbound POAPs
 
-    constructor(address _krnlSigner) Ownable(msg.sender) {
-        require(_krnlSigner != address(0), "KRNL signer required");
-        krnlSigner = _krnlSigner;
+    constructor(address _mantleSigner) Ownable(msg.sender) {
+        require(_mantleSigner != address(0), "Mantle signer required");
+        krnlSigner = _mantleSigner; // Variable name kept for backward compatibility
         
         // Deploy the POAPNFT contract with the soulbound flag
         poaps = new POAPNFT(poapSoulbound);
@@ -57,10 +57,10 @@ contract AvaraCore is Ownable, ReentrancyGuard {
         tickets.transferOwnership(address(this));
     }
 
-    // Admin can update KRNL signer (e.g., set to KRNL testnet/mainnet signer)
+    // Admin can update Mantle signer (e.g., set to Mantle testnet/mainnet signer)
     function setKrnlSigner(address _s) external onlyOwner {
         require(_s != address(0), "invalid signer");
-        krnlSigner = _s;
+        krnlSigner = _s; // Function name kept for backward compatibility
     }
 
     // --- Event / Market rules ---
@@ -141,7 +141,7 @@ contract AvaraCore is Ownable, ReentrancyGuard {
     // KRNL is expected to sign a message with this typed payload:
     // keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(action, ticketId, eventId, account, timestamp, nonce))))
     // Example actions: "MINT", "CHECKIN", "ANTI_BOT_PASS"
-    function _verifyKrnlSignature(
+    function _verifyMantleSignature(
         string memory action,
         uint256 ticketId,
         uint256 eventId,
@@ -167,11 +167,11 @@ contract AvaraCore is Ownable, ReentrancyGuard {
         uint256 eventId,
         uint256 timestamp,
         uint256 nonce,
-        bytes calldata krnlSignature
+        bytes calldata mantleSignature
     ) external nonReentrant returns (uint256) {
-        // verify signature by KRNL
-        bool ok = _verifyKrnlSignature("MINT", 0, eventId, to, timestamp, nonce, krnlSignature);
-        require(ok, "invalid KRNL mint proof");
+        // verify signature by Mantle
+        bool ok = _verifyMantleSignature("MINT", 0, eventId, to, timestamp, nonce, mantleSignature);
+        require(ok, "invalid Mantle mint proof");
 
         bytes32 proofKey = keccak256(abi.encodePacked("MINT", to, eventId, timestamp, nonce));
         require(!usedProof[proofKey], "proof used");
@@ -189,11 +189,11 @@ contract AvaraCore is Ownable, ReentrancyGuard {
         string calldata poapUri,
         uint256 timestamp,
         uint256 nonce,
-        bytes calldata krnlSignature
+        bytes calldata mantleSignature
     ) external nonReentrant returns (uint256) {
-        // verifying that KRNL vouches the check-in (it may have verified geofence, device, etc)
-        bool ok = _verifyKrnlSignature("CHECKIN", ticketId, eventId, msg.sender, timestamp, nonce, krnlSignature);
-        require(ok, "invalid KRNL checkin proof");
+        // verifying that Mantle vouches the check-in (it may have verified geofence, device, etc)
+        bool ok = _verifyMantleSignature("CHECKIN", ticketId, eventId, msg.sender, timestamp, nonce, mantleSignature);
+        require(ok, "invalid Mantle checkin proof");
 
         bytes32 proofKey = keccak256(abi.encodePacked("CHECKIN", ticketId, msg.sender, eventId, timestamp, nonce));
         require(!usedProof[proofKey], "proof used");

@@ -87,7 +87,7 @@ export const getContractsWithSigner = async (provider) => {
 };
 
 /**
- * Mint a ticket using KRNL signature
+ * Mint a ticket using Mantle signature
  * @param {ethers.Contract} avaraCore - AvaraCore contract instance
  * @param {string} to - Address to mint ticket to
  * @param {string} uri - Token URI
@@ -97,14 +97,14 @@ export const getContractsWithSigner = async (provider) => {
  * @param {string} krnlSignature - KRNL signature (hex string)
  * @returns {Promise<ethers.ContractTransactionResponse>}
  */
-export const mintTicketWithKrnl = async (
+export const mintTicketWithMantle = async (
   avaraCore,
   to,
   uri,
   eventId,
   timestamp,
   nonce,
-  krnlSignature
+  mantleSignature
 ) => {
   try {
     const tx = await avaraCore.mintTicketWithKrnl(
@@ -113,7 +113,7 @@ export const mintTicketWithKrnl = async (
       eventId,
       timestamp,
       nonce,
-      krnlSignature
+      mantleSignature
     );
     return tx;
   } catch (error) {
@@ -212,7 +212,7 @@ export const checkInAndMintPOAP = async (
   poapUri,
   timestamp,
   nonce,
-  krnlSignature
+  mantleSignature
 ) => {
   try {
     const tx = await avaraCore.checkInAndMintPOAP(
@@ -221,7 +221,7 @@ export const checkInAndMintPOAP = async (
       poapUri,
       timestamp,
       nonce,
-      krnlSignature
+      mantleSignature
     );
     return tx;
   } catch (error) {

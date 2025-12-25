@@ -10,20 +10,24 @@ contract DeployScript is Script {
 
         address deployer = tx.origin;
 
-        // Get KRNL signer or use deployer as fallback
-        address krnlSigner;
-        try vm.envAddress("KRNL_SIGNER") returns (address signer) {
-            krnlSigner = signer;
+        // Get Mantle signer or use deployer as fallback
+        address mantleSigner;
+        try vm.envAddress("MANTLE_SIGNER") returns (address signer) {
+            mantleSigner = signer;
         } catch {
-            krnlSigner = deployer;
-            console.log("KRNL_SIGNER not set, using deployer address");
+            try vm.envAddress("KRNL_SIGNER") returns (address signer) { // Backward compatibility
+                mantleSigner = signer;
+            } catch {
+                mantleSigner = deployer;
+                console.log("MANTLE_SIGNER not set, using deployer address");
+            }
         }
 
         console.log("Deploying AvaraCore...");
         console.log("Deployer:", deployer);
-        console.log("KRNL Signer:", krnlSigner);
+        console.log("Mantle Signer:", mantleSigner);
         
-        AvaraCore avaraCore = new AvaraCore(krnlSigner);
+        AvaraCore avaraCore = new AvaraCore(mantleSigner);
         
         address poapNFT = address(avaraCore.poaps());
         address ticketNFT = address(avaraCore.tickets());
@@ -32,7 +36,7 @@ contract DeployScript is Script {
         console.log("AvaraCore:", address(avaraCore));
         console.log("POAPNFT:", poapNFT);
         console.log("TicketNFT:", ticketNFT);
-        console.log("KRNL Signer:", krnlSigner);
+        console.log("Mantle Signer:", mantleSigner);
         
         vm.stopBroadcast();
     }

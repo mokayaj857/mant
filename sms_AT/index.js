@@ -49,8 +49,8 @@ const RPC_URL = process.env.RPC_URL || process.env.CHAIN_RPC_URL || 'https://api
 const AVARA_CORE_ADDRESS = process.env.AVARA_CORE_ADDRESS || '';
 const TICKET_NFT_ADDRESS = process.env.TICKET_NFT_ADDRESS || '';
 const POAP_NFT_ADDRESS = process.env.POAP_NFT_ADDRESS || '';
-const KRNL_PRIVATE_KEY = process.env.KRNL_PRIVATE_KEY || ''; // Matches server env var
-const KRNL_SIGNER_ADDRESS = process.env.KRNL_SIGNER_ADDRESS || '';
+const MANTLE_PRIVATE_KEY = process.env.MANTLE_PRIVATE_KEY || ''; // Matches server env var
+const MANTLE_SIGNER_ADDRESS = process.env.MANTLE_SIGNER_ADDRESS || '';
 const CHAIN_ID = process.env.CHAIN_ID || '43114'; // Avalanche Mainnet default
 
 // Initialize provider and signer for smart contracts
@@ -95,7 +95,7 @@ async function loadContractConfig() {
         avaraCore: result.data.avaraCore || AVARA_CORE_ADDRESS,
         ticketNFT: result.data.ticketNFT || TICKET_NFT_ADDRESS,
         poapNFT: result.data.poapNFT || POAP_NFT_ADDRESS,
-        krnlSigner: result.data.krnlSigner || KRNL_SIGNER_ADDRESS,
+        mantleSigner: result.data.mantleSigner || MANTLE_SIGNER_ADDRESS,
       };
     }
   } catch (error) {
@@ -106,22 +106,22 @@ async function loadContractConfig() {
     avaraCore: AVARA_CORE_ADDRESS,
     ticketNFT: TICKET_NFT_ADDRESS,
     poapNFT: POAP_NFT_ADDRESS,
-    krnlSigner: KRNL_SIGNER_ADDRESS,
+    mantleSigner: MANTLE_SIGNER_ADDRESS,
   };
 }
 
 // Initialize contracts
 (async () => {
-  if (RPC_URL && KRNL_PRIVATE_KEY) {
+  if (RPC_URL && MANTLE_PRIVATE_KEY) {
     try {
       provider = new ethers.JsonRpcProvider(RPC_URL);
-      signer = new ethers.Wallet(KRNL_PRIVATE_KEY, provider);
+      signer = new ethers.Wallet(MANTLE_PRIVATE_KEY, provider);
       
       // Load contract addresses (from env or server)
       const config = await loadContractConfig();
       
       if (config.avaraCore) {
-        // Load AvaraCore ABI (minimal ABI for mintTicketWithKrnl)
+        // Load AvaraCore ABI (minimal ABI for mintTicketWithKrnl - note: contract function name is immutable)
         const AvaraCoreABI = [
           "function mintTicketWithKrnl(address to, string memory uri, uint256 eventId, uint256 timestamp, uint256 nonce, bytes memory signature) external"
         ];
@@ -135,7 +135,7 @@ async function loadContractConfig() {
       console.warn('⚠️ Failed to initialize smart contract provider:', error.message);
     }
   } else {
-    console.warn('⚠️ RPC_URL or KRNL_PRIVATE_KEY not configured, NFT minting disabled');
+    console.warn('⚠️ RPC_URL or MANTLE_PRIVATE_KEY not configured, NFT minting disabled');
   }
 })();
 
@@ -366,7 +366,7 @@ Venue: ${event.venue || 'TBA'}
             let nftTokenId = null;
             if (avaraCoreContract && signer) {
               try {
-                // Get KRNL signature from server API (matches server route /api/krnl/mint-proof)
+                // Get Mantle signature from server API (matches server route /api/mantle/mint-proof)
                 const https = require('https');
                 const http = require('http');
                 const url = require('url');
@@ -400,8 +400,8 @@ Venue: ${event.venue || 'TBA'}
                   });
                 };
                 
-                // Use the correct endpoint and format from server/routes/krnl.js
-                const krnlRes = await makeRequest(`${SERVER_API_URL}/api/krnl/mint-proof`, {
+                // Use the correct endpoint and format from server/routes/mantle.js
+                const mantleRes = await makeRequest(`${SERVER_API_URL}/api/mantle/mint-proof`, {
                   method: 'POST',
                   body: {
                     to: signer.address, // Address to mint ticket to
@@ -409,12 +409,12 @@ Venue: ${event.venue || 'TBA'}
                   }
                 });
                 
-                if (krnlRes.ok) {
-                  const krnlResult = await krnlRes.json();
-                  if (krnlResult.success && krnlResult.data) {
-                    const { timestamp, nonce, signature } = krnlResult.data;
+                if (mantleRes.ok) {
+                  const mantleResult = await mantleRes.json();
+                  if (mantleResult.success && mantleResult.data) {
+                    const { timestamp, nonce, signature } = mantleResult.data;
                     
-                    // Mint ticket with KRNL signature
+                    // Mint ticket with Mantle signature
                     const tx = await avaraCoreContract.mintTicketWithKrnl(
                       signer.address,
                       `ipfs://ticket-${ticketCode}`, // Token URI

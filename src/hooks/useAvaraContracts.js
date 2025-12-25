@@ -4,7 +4,7 @@ import { useWallet, getEthereumProvider, safeAddListener, safeRemoveListener } f
 import {
   getContracts,
   getContractsWithSigner,
-  mintTicketWithKrnl,
+  mintTicketWithMantle,
   listTicket,
   buyTicket,
   checkInAndMintPOAP,
@@ -79,9 +79,9 @@ export const useAvaraContracts = () => {
     }
   }, [isConnected, walletAddress]);
 
-  // Mint ticket with KRNL signature
+  // Mint ticket with Mantle signature
   const mintTicket = useCallback(
-    async (to, uri, eventId, timestamp, nonce, krnlSignature) => {
+    async (to, uri, eventId, timestamp, nonce, mantleSignature) => {
       if (!contractsWithSigner?.avaraCore) {
         throw new Error('Contracts not initialized or wallet not connected');
       }
@@ -89,14 +89,14 @@ export const useAvaraContracts = () => {
       setLoading(true);
       setError(null);
       try {
-        const tx = await mintTicketWithKrnl(
+        const tx = await mintTicketWithMantle(
           contractsWithSigner.avaraCore,
           to,
           uri,
           eventId,
           timestamp,
           nonce,
-          krnlSignature
+          mantleSignature
         );
         await tx.wait();
         return tx;
@@ -158,7 +158,7 @@ export const useAvaraContracts = () => {
 
   // Check in and mint POAP
   const checkIn = useCallback(
-    async (ticketId, eventId, poapUri, timestamp, nonce, krnlSignature) => {
+    async (ticketId, eventId, poapUri, timestamp, nonce, mantleSignature) => {
       if (!contractsWithSigner?.avaraCore) {
         throw new Error('Contracts not initialized or wallet not connected');
       }
@@ -173,7 +173,7 @@ export const useAvaraContracts = () => {
           poapUri,
           timestamp,
           nonce,
-          krnlSignature
+          mantleSignature
         );
         await tx.wait();
         return tx;

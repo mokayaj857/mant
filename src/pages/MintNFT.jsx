@@ -341,8 +341,8 @@ const QuantumMintNFT = () => {
         // If it's not an RPC error, continue - might be a different issue
       }
 
-      setMintingStatus('Requesting KRNL mint proof...');
-      const proofRes = await fetch('/api/krnl/mint-proof', {
+      setMintingStatus('Requesting Mantle mint proof...');
+      const proofRes = await fetch('/api/mantle/mint-proof', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -352,7 +352,7 @@ const QuantumMintNFT = () => {
 
       const proofJson = await proofRes.json();
       if (!proofRes.ok || !proofJson?.success) {
-        throw new Error(proofJson?.error || 'Failed to obtain KRNL mint proof');
+        throw new Error(proofJson?.error || 'Failed to obtain Mantle mint proof');
       }
 
       const { timestamp, nonce, signature } = proofJson.data;
