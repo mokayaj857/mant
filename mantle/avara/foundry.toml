@@ -21,3 +21,13 @@ deduplicate = true
 cse = true
 constantOptimizer = true
 
+# Mantle Network Configuration
+[rpc_endpoints]
+mantle_mainnet = "https://rpc.mantle.xyz"
+mantle_testnet = "https://rpc.testnet.mantle.xyz"
+sepolia = "${SEPOLIA_URL}"
+
+[etherscan]
+mantle_mainnet = { key = "${MANTLE_MAINNET_ETHERSCAN_API_KEY}", url = "https://explorer.mantle.xyz/api" }
+mantle_testnet = { key = "${MANTLE_TESTNET_ETHERSCAN_API_KEY}", url = "https://explorer.testnet.mantle.xyz/api" }
+

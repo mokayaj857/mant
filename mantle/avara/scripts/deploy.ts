@@ -1,13 +1,73 @@
 import hre from "hardhat";
 
-import { createPublicClient, createWalletClient, http } from "viem";
+import { createPublicClient, createWalletClient, http, defineChain } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 
+// Define Mantle networks
+const mantleMainnet = defineChain({
+  id: 5000,
+  name: "Mantle Mainnet",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Mantle",
+    symbol: "MNT",
+  },
+  rpcUrls: {
+    default: {
+      http: ["https://rpc.mantle.xyz"],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "Mantle Explorer",
+      url: "https://explorer.mantle.xyz",
+    },
+  },
+});
+
+const mantleTestnet = defineChain({
+  id: 5001,
+  name: "Mantle Testnet",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Mantle",
+    symbol: "MNT",
+  },
+  rpcUrls: {
+    default: {
+      http: ["https://rpc.testnet.mantle.xyz"],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "Mantle Testnet Explorer",
+      url: "https://explorer.testnet.mantle.xyz",
+    },
+  },
+});
+
 async function main() {
-  const rpcUrl = process.env.SEPOLIA_URL;
+  // Determine which network to use
+  const network = process.env.NETWORK || "mantleTestnet";
+  let rpcUrl: string;
+  let chain: typeof mantleMainnet | typeof mantleTestnet | typeof sepolia;
+
+  if (network === "mantleMainnet") {
+    rpcUrl = process.env.MANTLE_MAINNET_RPC_URL || "https://rpc.mantle.xyz";
+    chain = mantleMainnet;
+  } else if (network === "mantleTestnet") {
+    rpcUrl = process.env.MANTLE_TESTNET_RPC_URL || "https://rpc.testnet.mantle.xyz";
+    chain = mantleTestnet;
+  } else if (network === "sepolia") {
+    rpcUrl = process.env.SEPOLIA_URL || "https://sepolia.infura.io/v3/YOUR-PROJECT-ID";
+    chain = sepolia;
+  } else {
+    throw new Error(`Unsupported network: ${network}. Use: mantleMainnet, mantleTestnet, or sepolia`);
+  }
+
   if (!rpcUrl) {
-    throw new Error("SEPOLIA_URL missing in .env");
+    throw new Error(`RPC URL missing for network: ${network}`);
   }
 
   const pk = process.env.PRIVATE_KEY;
@@ -19,18 +79,18 @@ async function main() {
   const account = privateKeyToAccount(privateKey);
 
   const publicClient = createPublicClient({
-    chain: sepolia,
+    chain,
     transport: http(rpcUrl),
   });
 
   const walletClient = createWalletClient({
     account,
-    chain: sepolia,
+    chain,
     transport: http(rpcUrl),
   });
 
   const deployerAddress = account.address;
-  console.log("Deploying contracts with the account:", deployerAddress);
+  console.log(`Deploying contracts to ${network} with the account:`, deployerAddress);
 
   const balance = await publicClient.getBalance({ address: deployerAddress });
   console.log("Account balance:", balance.toString());

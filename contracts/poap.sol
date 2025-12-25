@@ -4,13 +4,12 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 
 contract POAPNFT is ERC721, ERC721URIStorage, Ownable {
     uint256 public nextId = 1;
     bool public soulbound;
 
-    constructor(bool _soulbound) ERC721("Avara POAP", "APOAP") {
+    constructor(bool _soulbound) ERC721("Avara POAP", "APOAP") Ownable(msg.sender) {
         soulbound = _soulbound;
     }
 
@@ -31,10 +30,6 @@ contract POAPNFT is ERC721, ERC721URIStorage, Ownable {
     }
 
     // The following functions are overrides required by Solidity.
-    function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
-        super._burn(tokenId);
-    }
-
     function tokenURI(uint256 tokenId)
         public
         view
@@ -53,13 +48,11 @@ contract POAPNFT is ERC721, ERC721URIStorage, Ownable {
         return ERC721.supportsInterface(interfaceId) || ERC721URIStorage.supportsInterface(interfaceId);
     }
 
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId,
-        uint256 batchSize
-    ) internal virtual override(ERC721) {
-        require(!soulbound || from == address(0), "Soulbound: non-transferable");
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+    function _update(address to, uint256 tokenId, address auth) internal override(ERC721) returns (address) {
+        if (to != address(0)) {
+            address from = _ownerOf(tokenId);
+            require(!soulbound || from == address(0), "Soulbound: non-transferable");
+        }
+        return super._update(to, tokenId, auth);
     }
 }

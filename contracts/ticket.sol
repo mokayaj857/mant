@@ -4,11 +4,9 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 
 contract TicketNFT is ERC721, ERC721URIStorage, Ownable {
-    using Counters for Counters.Counter;
-    Counters.Counter private _tokenIds;
+    uint256 private _tokenIds;
 
     address public core; // parent AvaraCore
 
@@ -22,13 +20,13 @@ contract TicketNFT is ERC721, ERC721URIStorage, Ownable {
         _;
     }
 
-    constructor(address _core) ERC721("Avara Ticket", "AVT") {
+    constructor(address _core) ERC721("Avara Ticket", "AVT") Ownable(_core) {
         core = _core;
     }
 
     function mintTicket(address to, string memory uri, uint256 eventId) external onlyCore returns (uint256) {
-        _tokenIds.increment();
-        uint256 id = _tokenIds.current();
+        _tokenIds++;
+        uint256 id = _tokenIds;
         _safeMint(to, id);
         _setTokenURI(id, uri);
         ticketEvent[id] = eventId;
@@ -57,8 +55,8 @@ contract TicketNFT is ERC721, ERC721URIStorage, Ownable {
     }
 
     // The following functions are overrides required by Solidity.
-    function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
-        super._burn(tokenId);
+    function _update(address to, uint256 tokenId, address auth) internal override(ERC721) returns (address) {
+        return super._update(to, tokenId, auth);
     }
 
     function tokenURI(uint256 tokenId)
@@ -79,13 +77,4 @@ contract TicketNFT is ERC721, ERC721URIStorage, Ownable {
         return ERC721.supportsInterface(interfaceId) || ERC721URIStorage.supportsInterface(interfaceId);
     }
 
-    // disable approvals/transfers if needed — core enforces marketplace rules
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId,
-        uint256 batchSize
-    ) internal virtual override(ERC721) {
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
-    }
 }

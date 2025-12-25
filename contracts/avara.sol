@@ -17,14 +17,14 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./ticket.sol";
 import "./poap.sol";
 
 contract AvaraCore is Ownable, ReentrancyGuard {
-    using Counters for Counters.Counter;
     using ECDSA for bytes32;
+    using MessageHashUtils for bytes32;
 
     // --- Events ---
     event TicketMinted(uint256 indexed ticketId, uint256 indexed eventId, address indexed owner);
@@ -42,7 +42,7 @@ contract AvaraCore is Ownable, ReentrancyGuard {
     POAPNFT public poaps;
     bool public poapSoulbound = true; // Default to soulbound POAPs
 
-    constructor(address _krnlSigner) {
+    constructor(address _krnlSigner) Ownable(msg.sender) {
         require(_krnlSigner != address(0), "KRNL signer required");
         krnlSigner = _krnlSigner;
         
@@ -151,7 +151,7 @@ contract AvaraCore is Ownable, ReentrancyGuard {
         bytes memory signature
     ) internal view returns (bool) {
         bytes32 h = keccak256(abi.encodePacked(action, ticketId, eventId, account, timestamp, nonce));
-        bytes32 ethSigned = ECDSA.toEthSignedMessageHash(h);
+        bytes32 ethSigned = h.toEthSignedMessageHash();
         address signer = ECDSA.recover(ethSigned, signature);
         return signer == krnlSigner;
     }

@@ -3,7 +3,9 @@ import express from 'express';
 const router = express.Router();
 
 router.get('/config', (req, res) => {
-  const chainId = Number(process.env.CHAIN_ID || 11155111);
+  // Default to Mantle Testnet (5001) if not specified
+  // Mantle Mainnet: 5000, Mantle Testnet: 5001, Sepolia: 11155111
+  const chainId = Number(process.env.CHAIN_ID || 5001);
 
   const config = {
     chainId,

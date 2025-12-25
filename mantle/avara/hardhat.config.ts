@@ -28,6 +28,18 @@ const config: HardhatUserConfig = {
       url: process.env.SEPOLIA_URL || "https://sepolia.infura.io/v3/YOUR-PROJECT-ID",
       accounts: getPrivateKey(),
     },
+    mantleMainnet: {
+      type: "http",
+      url: process.env.MANTLE_MAINNET_RPC_URL || "https://rpc.mantle.xyz",
+      chainId: 5000,
+      accounts: getPrivateKey(),
+    },
+    mantleTestnet: {
+      type: "http",
+      url: process.env.MANTLE_TESTNET_RPC_URL || "https://rpc.testnet.mantle.xyz",
+      chainId: 5001,
+      accounts: getPrivateKey(),
+    },
   },
 };
 
