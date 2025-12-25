@@ -2,7 +2,7 @@
 
 ## 🌍 Overview
 
-Eventverse is a revolutionary blockchain-based ticketing platform engineered to combat fraud and inefficiencies in the event ticketing industry. Leveraging the Avalanche blockchain, our platform empowers event organizers to issue tickets as digital tokens, ensuring secure purchases, effortless resales, and QR-code-based authentication.
+Eventverse is a revolutionary blockchain-based ticketing platform engineered to combat fraud and inefficiencies in the event ticketing industry. Leveraging the Mantle blockchain, our platform empowers event organizers to issue tickets as digital tokens, ensuring secure purchases, effortless resales, and QR-code-based authentication.
 
 ## ✨ Key Features,
 
@@ -25,7 +25,7 @@ Eventverse is a revolutionary blockchain-based ticketing platform engineered to 
 
 ### 🔐 Secure Blockchain Transactions
 
-- Powered by Avalanche, enabling fast, transparent, and cost-efficient ticket purchases and resales.
+- Powered by Mantle, enabling fast, transparent, and cost-efficient ticket purchases and resales.
 - Immutable transaction records provide peace of mind for buyers and sellers.
 
 ### 🔄 Resale Marketplace
@@ -44,7 +44,7 @@ Eventverse is a revolutionary blockchain-based ticketing platform engineered to 
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 
 ### Blockchain
-![Avalanche](https://img.shields.io/badge/Avalanche-E84142?style=for-the-badge&logo=avalanche&logoColor=white)
+![Avalanche](https://img.shields.io/badge/MantleE84142?style=for-the-badge&logo=avalanche&logoColor=white)
 ![Web3.js](https://img.shields.io/badge/Web3.js-F16822?style=for-the-badge&logo=web3.js&logoColor=white)
 
 ### Development Tools
@@ -92,13 +92,13 @@ Eventverse is a revolutionary blockchain-based ticketing platform engineered to 
    npx hardhat compile
    ```
 
-4. **Configure Avalanche network:**
+4. **Configure Mantle network:**
    Edit `hardhat.config.js` to include Avalanche network details under the `networks` section.
 
 5. **Deploy contracts:**
 
    ```bash
-   npx hardhat run scripts/deploy.js --network avalanche
+   npx hardhat run scripts/deploy.js --network mantle
    ```
 
 6. **Run the application locally:**
