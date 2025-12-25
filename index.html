@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/assets/botImage.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EventVax</title>
+    <script>
+      // Aggressively suppress "Cannot redefine property: ethereum" errors from browser extensions
+      // This runs before React loads to catch errors early
+      (function() {
+        // Suppress console errors
+        const originalError = console.error;
+        console.error = function(...args) {
+          const hasEthereumError = args.some(arg => {
+            const str = String(arg || '');
+            return str.includes('Cannot redefine property: ethereum') || 
+                   str.includes('evmAsk.js') ||
+                   str.includes('evmAsk');
+          });
+          if (hasEthereumError) return;
+          originalError.apply(console, args);
+        };
+        
+        // Suppress console warnings too
+        const originalWarn = console.warn;
+        console.warn = function(...args) {
+          const hasEthereumError = args.some(arg => {
+            const str = String(arg || '');
+            return str.includes('Cannot redefine property: ethereum') || 
+                   str.includes('evmAsk.js');
+          });
+          if (hasEthereumError) return;
+          originalWarn.apply(console, args);
+        };
+        
+        // Catch uncaught errors
+        window.addEventListener('error', function(event) {
+          if (event.message && (
+              event.message.includes('Cannot redefine property: ethereum') ||
+              event.message.includes('evmAsk.js')
+            )) {
+            event.preventDefault();
+            event.stopPropagation();
+            return true;
+          }
+        }, true);
+        
+        // Catch unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(event) {
+          const reason = event.reason;
+          if (reason && (
+              String(reason).includes('Cannot redefine property: ethereum') ||
+              String(reason).includes('evmAsk.js')
+            )) {
+            event.preventDefault();
+            return true;
+          }
+        });
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
