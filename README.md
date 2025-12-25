@@ -174,9 +174,9 @@ Eventverse is a revolutionary blockchain-based ticketing platform engineered to 
 
 
 
-## ⛰️ Avalanche Integration
+## ⛰️Mantle Integration
 
-### 🚀 Why Avalanche?
+   ### 🚀 Why Mantle?
 
 - **Speed & Efficiency:** Lightning-fast finality for instant ticket transfers within 2 seconds.
 - **Low Costs:** Affordable transactions for users and event organizers.
@@ -186,7 +186,7 @@ Eventverse is a revolutionary blockchain-based ticketing platform engineered to 
 
 ### 🔗 Deployment Strategy
 
-- Our smart contracts are deployed on Avalanche's C-Chain to facilitate secure ticket operations.
+- Our smart contracts are deployed on Mantle C-Chain to facilitate secure ticket operations.
 - Robust deployment pipeline via Hardhat ensures reliability.
 
 ## 🔮 Vision.
