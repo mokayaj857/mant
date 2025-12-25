@@ -121,11 +121,10 @@ Eventverse is a revolutionary blockchain-based ticketing platform engineered to 
 
 | Name                | Role                 | Contact                                      |
 | ------------------- | -------------------- | -------------------------------------------- |
-| Williams Ochieng    | Smart Contract Dev   | [williams@example.com](mailto:williams@example.com) |
+| Irene Nditi    | Smart Contract Dev   | [irendenditi1@gmail.com](mailto:irenenditi1@gmail.com) |
 | Joseph Okumu Otieno | Full-stack Engineer  | [jokumu25@gmail.com](mailto:jokumu25@gmail.com) |
 | John Mokaya         | Frontend Developer   | [mokayaj857@gmail.com](mailto:mokayaj857@gmail.com) |
-| Phillip Ochieng    | Frontend Developer    | [oumaphilip01@gmail.com](mailto:oumaphilip01@gmail.com) |
-| Ouma Ouma         | Full-Stack Enginee   | [ouma.godwin10@gmail.com](mailto:ouma.godwin10@gmail.com) |
+| Mary Njoroge  | Project Manager    | [marynyambura7304@gmail.com](mailto:marynyambura7304@gmail.com) |
 
 
 ### 🌐 Waitlist Landing Page Integration
