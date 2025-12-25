@@ -151,10 +151,10 @@ async function testSmartContractConnection() {
           
           // Try to get contract info
           const AvaraCoreABI = [
-            "function krnlSigner() view returns (address)" // Note: Contract function name is immutable
+            "function mantleSigner() view returns (address)"
           ];
           const contract = new ethers.Contract(AVARA_CORE_ADDRESS, AvaraCoreABI, provider);
-          const signer = await contract.krnlSigner(); // Contract still uses krnlSigner() name
+          const signer = await contract.mantleSigner();
           console.log(`   - Mantle Signer: ${signer}`);
         } else {
           console.log(`❌ No contract found at: ${AVARA_CORE_ADDRESS}`);

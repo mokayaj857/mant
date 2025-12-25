@@ -35,7 +35,7 @@ contract AvaraCore is Ownable, ReentrancyGuard {
     event ResaleRuleUpdated(uint256 indexed eventId, uint256 maxPrice, uint16 maxTransfers);
 
     // --- Mantle signer (off-chain orchestrator) ---
-    address public mantleSigner; // Note: Keeping krnlSigner variable name for backward compatibility
+    address public mantleSigner;
     
     // --- Storage: instances ---
     TicketNFT public tickets;
@@ -44,7 +44,7 @@ contract AvaraCore is Ownable, ReentrancyGuard {
 
     constructor(address _mantleSigner) Ownable(msg.sender) {
         require(_mantleSigner != address(0), "Mantle signer required");
-        krnlSigner = _mantleSigner; // Variable name kept for backward compatibility
+        mantleSigner = _mantleSigner;
         
         // Deploy the POAPNFT contract with the soulbound flag
         poaps = new POAPNFT(poapSoulbound);
@@ -58,9 +58,9 @@ contract AvaraCore is Ownable, ReentrancyGuard {
     }
 
     // Admin can update Mantle signer (e.g., set to Mantle testnet/mainnet signer)
-    function setKrnlSigner(address _s) external onlyOwner {
+    function setMantleSigner(address _s) external onlyOwner {
         require(_s != address(0), "invalid signer");
-        krnlSigner = _s; // Function name kept for backward compatibility
+        mantleSigner = _s;
     }
 
     // --- Event / Market rules ---
@@ -137,8 +137,8 @@ contract AvaraCore is Ownable, ReentrancyGuard {
         listings[ticketId].active = false;
     }
 
-    // --- KRNL verification utilities ---
-    // KRNL is expected to sign a message with this typed payload:
+    // --- Mantle verification utilities ---
+    // Mantle is expected to sign a message with this typed payload:
     // keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(action, ticketId, eventId, account, timestamp, nonce))))
     // Example actions: "MINT", "CHECKIN", "ANTI_BOT_PASS"
     function _verifyMantleSignature(
@@ -153,15 +153,15 @@ contract AvaraCore is Ownable, ReentrancyGuard {
         bytes32 h = keccak256(abi.encodePacked(action, ticketId, eventId, account, timestamp, nonce));
         bytes32 ethSigned = h.toEthSignedMessageHash();
         address signer = ECDSA.recover(ethSigned, signature);
-        return signer == krnlSigner;
+        return signer == mantleSigner;
     }
 
     // prevent replay of signed proofs
     mapping(bytes32 => bool) public usedProof;
 
-    // --- Ticket minting via KRNL-signed mint proof ---
-    // Organizer or KRNL can execute mint when signed proof is provided
-    function mintTicketWithKrnl(
+    // --- Ticket minting via Mantle-signed mint proof ---
+    // Organizer or Mantle can execute mint when signed proof is provided
+    function mintTicketWithMantle(
         address to,
         string calldata uri,
         uint256 eventId,
@@ -182,7 +182,7 @@ contract AvaraCore is Ownable, ReentrancyGuard {
         return id;
     }
 
-    // --- Check-in / POAP issuance via KRNL-signed check-in proof ---
+    // --- Check-in / POAP issuance via Mantle-signed check-in proof ---
     function checkInAndMintPOAP(
         uint256 ticketId,
         uint256 eventId,

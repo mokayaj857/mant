@@ -121,9 +121,9 @@ async function loadContractConfig() {
       const config = await loadContractConfig();
       
       if (config.avaraCore) {
-        // Load AvaraCore ABI (minimal ABI for mintTicketWithKrnl - note: contract function name is immutable)
+        // Load AvaraCore ABI (minimal ABI for mintTicketWithMantle)
         const AvaraCoreABI = [
-          "function mintTicketWithKrnl(address to, string memory uri, uint256 eventId, uint256 timestamp, uint256 nonce, bytes memory signature) external"
+          "function mintTicketWithMantle(address to, string memory uri, uint256 eventId, uint256 timestamp, uint256 nonce, bytes memory signature) external"
         ];
         
         avaraCoreContract = new ethers.Contract(config.avaraCore, AvaraCoreABI, signer);
@@ -415,7 +415,7 @@ Venue: ${event.venue || 'TBA'}
                     const { timestamp, nonce, signature } = mantleResult.data;
                     
                     // Mint ticket with Mantle signature
-                    const tx = await avaraCoreContract.mintTicketWithKrnl(
+                    const tx = await avaraCoreContract.mintTicketWithMantle(
                       signer.address,
                       `ipfs://ticket-${ticketCode}`, // Token URI
                       parseInt(event.id),

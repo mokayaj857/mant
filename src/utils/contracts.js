@@ -107,7 +107,7 @@ export const mintTicketWithMantle = async (
   mantleSignature
 ) => {
   try {
-    const tx = await avaraCore.mintTicketWithKrnl(
+    const tx = await avaraCore.mintTicketWithMantle(
       to,
       uri,
       eventId,

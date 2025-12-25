@@ -88,15 +88,15 @@ async function main() {
     functionName: "owner",
   });
 
-  const onchainKrnlSigner = await publicClient.readContract({
+  const onchainMantleSigner = await publicClient.readContract({
     address: avaraCoreAddress,
     abi: avaraArtifact.abi,
-    functionName: "krnlSigner",
+    functionName: "mantleSigner",
   });
 
   console.log("POAPNFT owner:", poapOwner);
   console.log("TicketNFT owner:", ticketOwner);
-  console.log("KRNL Signer:", onchainKrnlSigner);
+  console.log("Mantle Signer:", onchainMantleSigner);
   
   // Save deployment info
   const chainId = await publicClient.getChainId();
@@ -108,7 +108,7 @@ async function main() {
       POAPNFT: poapNFTAddress,
       TicketNFT: ticketNFTAddress,
       MANTLE_SIGNER: mantleSigner,
-      KRNL_SIGNER: mantleSigner // Backward compatibility
+      MANTLE_SIGNER: mantleSigner
     },
     timestamp: new Date().toISOString()
   };
