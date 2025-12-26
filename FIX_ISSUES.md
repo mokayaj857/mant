@@ -96,3 +96,4 @@ sed -i 's/^MANTLE_PRIVATE_KEY=/MANTLE_PRIVATE_KEY=0x/' .env
 3. Run the test: `./test-connection.sh`
 4. All tests should pass! ✅
 
+

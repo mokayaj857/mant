@@ -14,37 +14,71 @@ export const useWallet = () => {
 
 // Helper function to get the ethereum provider safely
 export const getEthereumProvider = () => {
-  try {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-
-    // Check if ethereum exists and is accessible
-    if (!window.ethereum) {
-      return null;
-    }
-
-    // Handle case where ethereum might be an array of providers
-    if (Array.isArray(window.ethereum.providers)) {
-      // Prefer MetaMask if available
-      const metaMaskProvider = window.ethereum.providers.find(
-        (p) => p.isMetaMask
-      );
-      return metaMaskProvider || window.ethereum.providers[0];
-    }
-
-    return window.ethereum;
-  } catch (error) {
-    // Handle cases where browser extensions are conflicting
-    // (e.g., "Cannot redefine property: ethereum")
-    // Suppress this specific error as it's from browser extensions, not our code
-    if (error.message && error.message.includes('Cannot redefine property: ethereum')) {
-      // Silently handle - this is from browser extensions conflicting
-      return null;
-    }
-    console.warn('Error accessing ethereum provider:', error);
+  if (typeof window === 'undefined') {
     return null;
   }
+
+  // Multiple strategies to detect MetaMask/Web3 wallet
+  let ethereum = null;
+
+  // Strategy 1: Direct access (most common)
+  try {
+    if (window.ethereum) {
+      ethereum = window.ethereum;
+    }
+  } catch (e) {
+    // Ignore errors from direct access - might be blocked by extensions
+  }
+
+  // Strategy 2: Try to access via property descriptor (for conflicting extensions)
+  if (!ethereum) {
+    try {
+      const descriptor = Object.getOwnPropertyDescriptor(window, 'ethereum');
+      if (descriptor && descriptor.value) {
+        ethereum = descriptor.value;
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  // Strategy 3: Try accessing via getOwnPropertyNames (fallback)
+  if (!ethereum) {
+    try {
+      const props = Object.getOwnPropertyNames(window);
+      if (props.includes('ethereum')) {
+        ethereum = window.ethereum;
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  // Strategy 4: Check for web3 (legacy)
+  if (!ethereum && window.web3 && window.web3.currentProvider) {
+    ethereum = window.web3.currentProvider;
+  }
+
+  if (!ethereum) {
+    // Debug: Log what we found
+    console.log('MetaMask detection: window.ethereum =', typeof window.ethereum !== 'undefined' ? 'exists' : 'undefined');
+    return null;
+  }
+
+  // Handle case where ethereum might be an array of providers
+  if (Array.isArray(ethereum.providers)) {
+    // Prefer MetaMask if available
+    const metaMaskProvider = ethereum.providers.find(
+      (p) => p && p.isMetaMask
+    );
+    if (metaMaskProvider) {
+      return metaMaskProvider;
+    }
+    // Return first available provider
+    return ethereum.providers[0] || ethereum;
+  }
+
+  return ethereum;
 };
 
 // Helper function to safely add event listener
@@ -114,6 +148,8 @@ export const WalletProvider = ({ children }) => {
   const checkWalletConnection = useCallback(async () => {
     const ethereumProvider = getEthereumProvider();
     if (!ethereumProvider) {
+      // Log for debugging but don't set error - user might not have wallet yet
+      console.log('No ethereum provider found. Make sure MetaMask or another Web3 wallet is installed and unlocked.');
       return;
     }
 
@@ -130,6 +166,7 @@ export const WalletProvider = ({ children }) => {
       }
     } catch (error) {
       console.error("Error checking wallet connection:", error);
+      // Don't throw - just log the error
     }
   }, [EXPECTED_CHAIN_ID]);
 
@@ -157,7 +194,11 @@ export const WalletProvider = ({ children }) => {
     const ethereumProvider = getEthereumProvider();
     
     if (!ethereumProvider) {
-      throw new Error("Please install MetaMask or another Web3 wallet to connect your wallet!");
+      // Provide more helpful error message
+      const errorMsg = typeof window !== 'undefined' && window.ethereum 
+        ? "Unable to access wallet. Please make sure MetaMask is unlocked and try refreshing the page."
+        : "Please install MetaMask or another Web3 wallet to connect your wallet!";
+      throw new Error(errorMsg);
     }
 
     setIsConnecting(true);

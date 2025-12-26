@@ -37,7 +37,11 @@ export const useAvaraContracts = () => {
     const initContracts = async () => {
       const ethereumProvider = getEthereumProvider();
       if (!ethereumProvider) {
-        setError('MetaMask or another Web3 wallet is not installed');
+        // Don't set error immediately - user might connect wallet later
+        // Only set error if we're trying to use contracts
+        if (isConnected) {
+          setError('MetaMask or another Web3 wallet is not accessible. Please refresh the page or check if MetaMask is unlocked.');
+        }
         return;
       }
 
@@ -46,18 +50,32 @@ export const useAvaraContracts = () => {
         setProvider(browserProvider);
 
         // Get read-only contracts (now async)
-        const readOnlyContracts = await getContracts(browserProvider);
-        setContracts(readOnlyContracts);
+        let readOnlyContracts = null;
+        try {
+          readOnlyContracts = await getContracts(browserProvider);
+          setContracts(readOnlyContracts);
+          setError(null); // Clear any previous errors
+        } catch (contractError) {
+          // If contract addresses are missing, set error but don't break the hook
+          console.error('Error initializing contracts:', contractError);
+          setError(contractError.message);
+          setContracts(null);
+        }
 
-        // Get contracts with signer if wallet is connected
-        if (isConnected && walletAddress) {
-          const contractsWithSignerInstance = await getContractsWithSigner(browserProvider);
-          setContractsWithSigner(contractsWithSignerInstance);
+        // Get contracts with signer if wallet is connected and contracts were initialized
+        if (isConnected && walletAddress && readOnlyContracts) {
+          try {
+            const contractsWithSignerInstance = await getContractsWithSigner(browserProvider);
+            setContractsWithSigner(contractsWithSignerInstance);
+          } catch (signerError) {
+            console.error('Error getting contracts with signer:', signerError);
+            setContractsWithSigner(null);
+          }
         } else {
           setContractsWithSigner(null);
         }
       } catch (err) {
-        console.error('Error initializing contracts:', err);
+        console.error('Error initializing provider:', err);
         setError(err.message);
       }
     };

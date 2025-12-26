@@ -21,6 +21,7 @@ import {
 import CommentRatingSection from '../components/CommentRatingSection';
 import { useWallet, getEthereumProvider } from '../contexts/WalletContext';
 import { useAvaraContracts } from '../hooks/useAvaraContracts';
+import { switchToMantleNetwork, getNetworkConfig, getExpectedChainId } from '../utils/networkConfig';
 import { ethers } from 'ethers';
 
 const QuantumMintNFT = () => {
@@ -225,50 +226,56 @@ const QuantumMintNFT = () => {
       const ethereumProvider = getEthereumProvider();
       if (ethereumProvider) {
         try {
-          const chainId = await ethereumProvider.request({ method: 'eth_chainId' });
-          const expectedChainIdNum = Number(import.meta.env.VITE_EXPECTED_CHAIN_ID || 0) || null;
-          const expectedChainIdHex = expectedChainIdNum ? `0x${expectedChainIdNum.toString(16)}` : null;
+            const chainId = await ethereumProvider.request({ method: 'eth_chainId' });
+            const expectedChainIdNum = getExpectedChainId();
+            const expectedChainIdHex = expectedChainIdNum ? `0x${expectedChainIdNum.toString(16)}` : null;
 
           if (expectedChainIdHex && chainId?.toLowerCase?.() !== expectedChainIdHex.toLowerCase()) {
             setMintingStatus('Please switch to the correct network...');
             try {
-              await ethereumProvider.request({
-                method: 'wallet_switchEthereumChain',
-                params: [{ chainId: expectedChainIdHex }],
-              });
+              // Determine which network to switch to
+              let networkName = 'testnet';
+              if (expectedChainIdNum === 5000) networkName = 'mainnet';
+              else if (expectedChainIdNum === 11155111) networkName = 'sepolia';
+              else if (expectedChainIdNum === 5003) {
+                // Custom network - use network config utility
+                const networkConfig = getNetworkConfig(expectedChainIdNum);
+                if (networkConfig) {
+                  await ethereumProvider.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                      chainId: networkConfig.chainId,
+                      chainName: networkConfig.chainName,
+                      nativeCurrency: networkConfig.nativeCurrency,
+                      rpcUrls: networkConfig.rpcUrls,
+                      blockExplorerUrls: networkConfig.blockExplorerUrls,
+                    }],
+                  });
+                } else {
+                  throw new Error(`Network with Chain ID ${expectedChainIdNum} is not configured.`);
+                }
+              } else {
+                // Try to use the network config utility
+                await switchToMantleNetwork(networkName);
+              }
             } catch (switchError) {
               if (switchError?.code === 4902 || switchError?.message?.includes('Unrecognized chain ID')) {
-                const rpcUrls = (import.meta.env.VITE_CHAIN_RPC_URLS || '')
-                  .split(',')
-                  .map((s) => s.trim())
-                  .filter(Boolean);
-
-                const blockExplorerUrls = (import.meta.env.VITE_CHAIN_BLOCK_EXPLORER_URLS || '')
-                  .split(',')
-                  .map((s) => s.trim())
-                  .filter(Boolean);
-
-                const chainName = import.meta.env.VITE_CHAIN_NAME || 'Custom Network';
-                const nativeCurrency = {
-                  name: import.meta.env.VITE_CHAIN_NATIVE_NAME || 'ETH',
-                  symbol: import.meta.env.VITE_CHAIN_NATIVE_SYMBOL || 'ETH',
-                  decimals: 18,
-                };
-
-                if (rpcUrls.length === 0) {
-                  throw new Error(`Network with Chain ID ${expectedChainIdNum} (${expectedChainIdHex}) is not configured. Please add it manually to your wallet or configure VITE_CHAIN_RPC_URLS in your environment.`);
+                // Try to get network config and add it
+                const networkConfig = getNetworkConfig(expectedChainIdNum);
+                if (networkConfig) {
+                  await ethereumProvider.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                      chainId: networkConfig.chainId,
+                      chainName: networkConfig.chainName,
+                      nativeCurrency: networkConfig.nativeCurrency,
+                      rpcUrls: networkConfig.rpcUrls,
+                      blockExplorerUrls: networkConfig.blockExplorerUrls,
+                    }],
+                  });
+                } else {
+                  throw new Error(`Network with Chain ID ${expectedChainIdNum} (${expectedChainIdHex}) is not configured. Please add it manually to your wallet.`);
                 }
-
-                await ethereumProvider.request({
-                  method: 'wallet_addEthereumChain',
-                  params: [{
-                    chainId: expectedChainIdHex,
-                    chainName,
-                    nativeCurrency,
-                    rpcUrls,
-                    blockExplorerUrls,
-                  }],
-                });
               } else if (switchError?.code === 4001) {
                 throw new Error('Network switch was rejected. Please switch networks manually and try again.');
               } else {

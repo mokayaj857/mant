@@ -85,6 +85,12 @@ import './index.css';
 import WaitlistPage from './pages/WaitingList';
 import QuantumTicketResale from './pages/QuantamTicketResale';
 import AvaraContractExample from './components/AvaraContractExample';
+import { debugWallet } from './utils/walletDebug';
+
+// Make debug utility available
+if (typeof window !== 'undefined') {
+  window.debugWallet = debugWallet;
+}
 
 // App component that wraps RouterProvider with providers
 const App = () => {

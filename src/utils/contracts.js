@@ -30,26 +30,43 @@ const fetchContractAddressesFromServer = async () => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '';
       const baseUrl = apiUrl || window.location.origin;
-      const response = await fetch(`${baseUrl}/api/contracts/config`);
+      const response = await fetch(`${baseUrl}/api/contracts/config`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch contract config: ${response.statusText}`);
+        console.warn(`Failed to fetch contract config: ${response.status} ${response.statusText}`);
+        return null;
       }
 
       const result = await response.json();
       
       if (result.success && result.data) {
-        cachedAddresses = {
+        const addresses = {
           AVARA_CORE: result.data.avaraCore || '',
           TICKET_NFT: result.data.ticketNFT || '',
           POAP_NFT: result.data.poapNFT || '',
         };
-        return cachedAddresses;
+        
+        // Only cache if we got valid addresses
+        if (addresses.AVARA_CORE && addresses.TICKET_NFT && addresses.POAP_NFT) {
+          cachedAddresses = addresses;
+          console.log('✅ Contract addresses fetched from server:', addresses);
+          return cachedAddresses;
+        } else {
+          console.warn('⚠️ Server returned incomplete contract addresses:', addresses);
+          console.warn('⚠️ Make sure AVARA_CORE_ADDRESS, TICKET_NFT_ADDRESS, and POAP_NFT_ADDRESS are set in server/.env');
+          // Return null so it falls back to env vars or shows error
+          return null;
+        }
       }
       
       return null;
     } catch (error) {
-      console.warn('Failed to fetch contract addresses from server:', error);
+      console.warn('Failed to fetch contract addresses from server:', error.message);
       return null;
     } finally {
       addressFetchPromise = null;
@@ -84,9 +101,13 @@ export const resolveContractAddresses = async (overrides = {}) => {
   }
 
   // Try to fetch from server
-  const serverAddresses = await fetchContractAddressesFromServer();
-  if (serverAddresses) {
-    return serverAddresses;
+  try {
+    const serverAddresses = await fetchContractAddressesFromServer();
+    if (serverAddresses && serverAddresses.AVARA_CORE && serverAddresses.TICKET_NFT && serverAddresses.POAP_NFT) {
+      return serverAddresses;
+    }
+  } catch (error) {
+    console.warn('Failed to fetch addresses from server, using fallback:', error);
   }
 
   // Fallback to env vars (may be empty)
@@ -99,9 +120,9 @@ export const resolveContractAddresses = async (overrides = {}) => {
 
 const assertAddressesConfigured = (addresses) => {
   const missing = [];
-  if (!addresses?.AVARA_CORE) missing.push('AVARA_CORE');
-  if (!addresses?.TICKET_NFT) missing.push('TICKET_NFT');
-  if (!addresses?.POAP_NFT) missing.push('POAP_NFT');
+  if (!addresses?.AVARA_CORE || addresses.AVARA_CORE === '') missing.push('AVARA_CORE');
+  if (!addresses?.TICKET_NFT || addresses.TICKET_NFT === '') missing.push('TICKET_NFT');
+  if (!addresses?.POAP_NFT || addresses.POAP_NFT === '') missing.push('POAP_NFT');
   if (missing.length > 0) {
     throw new Error(
       `Missing contract address(es): ${missing.join(', ')}. ` +

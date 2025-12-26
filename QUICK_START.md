@@ -85,3 +85,4 @@ cd event-vax
 - `ENV_SETUP_GUIDE.md` - Environment variable guide
 - `FRONTEND_CONTRACT_SETUP.md` - Frontend integration guide
 
+

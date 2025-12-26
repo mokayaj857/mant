@@ -40,6 +40,18 @@ export const MANTLE_NETWORKS = {
     rpcUrls: ['https://rpc.sepolia.mantle.xyz'],
     blockExplorerUrls: ['https://explorer.sepolia.mantle.xyz'],
   },
+  custom5003: {
+    chainId: '0x138b', // 5003 in hex
+    chainIdDecimal: 5003,
+    chainName: 'Mantle Custom Network',
+    nativeCurrency: {
+      name: 'Mantle',
+      symbol: 'MNT',
+      decimals: 18,
+    },
+    rpcUrls: ['https://rpc.sepolia.mantle.xyz'], // Using Sepolia RPC as fallback
+    blockExplorerUrls: ['https://explorer.sepolia.mantle.xyz'],
+  },
 };
 
 /**
@@ -67,12 +79,25 @@ export const getNetworkConfig = (chainId) => {
       return network;
     }
   }
-  return null;
+  
+  // If not found, return a default config for the chain ID
+  return {
+    chainId: `0x${chainIdNum.toString(16)}`,
+    chainIdDecimal: chainIdNum,
+    chainName: `Custom Network ${chainIdNum}`,
+    nativeCurrency: {
+      name: 'Ether',
+      symbol: 'ETH',
+      decimals: 18,
+    },
+    rpcUrls: ['https://rpc.sepolia.mantle.xyz'],
+    blockExplorerUrls: ['https://explorer.sepolia.mantle.xyz'],
+  };
 };
 
 /**
  * Switch to Mantle network in MetaMask
- * @param {string} network - 'mainnet', 'testnet', or 'sepolia'
+ * @param {string|number} network - 'mainnet', 'testnet', 'sepolia', or chain ID number
  * @returns {Promise<void>}
  */
 export const switchToMantleNetwork = async (network = 'testnet') => {
@@ -81,7 +106,15 @@ export const switchToMantleNetwork = async (network = 'testnet') => {
     throw new Error('MetaMask is not installed');
   }
 
-  const networkConfig = MANTLE_NETWORKS[network];
+  let networkConfig;
+  
+  // If network is a number, get config by chain ID
+  if (typeof network === 'number') {
+    networkConfig = getNetworkConfig(network);
+  } else {
+    networkConfig = MANTLE_NETWORKS[network];
+  }
+  
   if (!networkConfig) {
     throw new Error(`Unknown network: ${network}`);
   }

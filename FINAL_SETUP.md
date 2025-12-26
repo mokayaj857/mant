@@ -96,3 +96,4 @@ echo "✅ Configuration updated! Now restart your backend server."
 
 Run `./test-connection.sh` to verify everything works.
 
+
