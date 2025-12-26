@@ -25,20 +25,29 @@ export const MANTLE_NETWORKS = {
       symbol: 'MNT',
       decimals: 18,
     },
-    rpcUrls: ['https://rpc.testnet.mantle.xyz'],
+    rpcUrls: [
+      'https://rpc.testnet.mantle.xyz',
+      'https://mantle-testnet.rpc.thirdweb.com',
+      'https://rpc.ankr.com/mantle_testnet',
+    ],
     blockExplorerUrls: ['https://explorer.testnet.mantle.xyz'],
   },
   sepolia: {
     chainId: '0xAA36A7', // 11155111 in hex
     chainIdDecimal: 11155111,
-    chainName: 'Mantle Sepolia',
+    chainName: 'Sepolia',
     nativeCurrency: {
       name: 'Ether',
       symbol: 'ETH',
       decimals: 18,
     },
-    rpcUrls: ['https://rpc.sepolia.mantle.xyz'],
-    blockExplorerUrls: ['https://explorer.sepolia.mantle.xyz'],
+    rpcUrls: [
+      'https://rpc.sepolia.org',
+      'https://sepolia.infura.io/v3/',
+      'https://ethereum-sepolia-rpc.publicnode.com',
+      'https://rpc.sepolia.mantle.xyz',
+    ],
+    blockExplorerUrls: ['https://sepolia.etherscan.io'],
   },
   custom5003: {
     chainId: '0x138b', // 5003 in hex
@@ -129,6 +138,14 @@ export const switchToMantleNetwork = async (network = 'testnet') => {
     // This error code indicates that the chain has not been added to MetaMask
     if (switchError.code === 4902 || switchError.message?.includes('Unrecognized chain ID')) {
       try {
+        // Ensure RPC URLs are properly formatted (use array format)
+        const rpcUrls = Array.isArray(networkConfig.rpcUrls) 
+          ? networkConfig.rpcUrls 
+          : [networkConfig.rpcUrls || 'https://rpc.sepolia.org'];
+        const blockExplorerUrls = Array.isArray(networkConfig.blockExplorerUrls)
+          ? networkConfig.blockExplorerUrls
+          : [networkConfig.blockExplorerUrls || 'https://sepolia.etherscan.io'];
+        
         // Add the network to MetaMask
         await ethereum.request({
           method: 'wallet_addEthereumChain',
@@ -136,15 +153,20 @@ export const switchToMantleNetwork = async (network = 'testnet') => {
             chainId: networkConfig.chainId,
             chainName: networkConfig.chainName,
             nativeCurrency: networkConfig.nativeCurrency,
-            rpcUrls: networkConfig.rpcUrls,
-            blockExplorerUrls: networkConfig.blockExplorerUrls,
+            rpcUrls: rpcUrls,
+            blockExplorerUrls: blockExplorerUrls,
           }],
         });
+        // After adding, try switching again
+        await ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: networkConfig.chainId }],
+        });
       } catch (addError) {
-        throw new Error(`Failed to add ${networkConfig.chainName} to MetaMask: ${addError.message}`);
+        throw new Error(`Failed to add ${networkConfig.chainName} to MetaMask: ${addError.message}. Please add it manually in MetaMask settings.`);
       }
     } else if (switchError.code === 4001) {
-      throw new Error('Network switch was rejected by user');
+      throw new Error('Network switch was rejected by user. Please switch manually in MetaMask.');
     } else {
       throw switchError;
     }

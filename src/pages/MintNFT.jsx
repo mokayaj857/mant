@@ -259,27 +259,59 @@ const QuantumMintNFT = () => {
                 await switchToMantleNetwork(networkName);
               }
             } catch (switchError) {
+              console.log('Network switch error:', switchError);
               if (switchError?.code === 4902 || switchError?.message?.includes('Unrecognized chain ID')) {
                 // Try to get network config and add it
                 const networkConfig = getNetworkConfig(expectedChainIdNum);
                 if (networkConfig) {
-                  await ethereumProvider.request({
-                    method: 'wallet_addEthereumChain',
-                    params: [{
-                      chainId: networkConfig.chainId,
-                      chainName: networkConfig.chainName,
-                      nativeCurrency: networkConfig.nativeCurrency,
-                      rpcUrls: networkConfig.rpcUrls,
-                      blockExplorerUrls: networkConfig.blockExplorerUrls,
-                    }],
-                  });
+                  try {
+                    // Ensure RPC URLs are properly formatted (use first URL if array)
+                    const rpcUrls = Array.isArray(networkConfig.rpcUrls) 
+                      ? networkConfig.rpcUrls 
+                      : [networkConfig.rpcUrls];
+                    const blockExplorerUrls = Array.isArray(networkConfig.blockExplorerUrls)
+                      ? networkConfig.blockExplorerUrls
+                      : [networkConfig.blockExplorerUrls];
+                    
+                    await ethereumProvider.request({
+                      method: 'wallet_addEthereumChain',
+                      params: [{
+                        chainId: networkConfig.chainId,
+                        chainName: networkConfig.chainName,
+                        nativeCurrency: networkConfig.nativeCurrency,
+                        rpcUrls: rpcUrls,
+                        blockExplorerUrls: blockExplorerUrls,
+                      }],
+                    });
+                    // After adding, try switching again
+                    await ethereumProvider.request({
+                      method: 'wallet_switchEthereumChain',
+                      params: [{ chainId: networkConfig.chainId }],
+                    });
+                  } catch (addError) {
+                    console.error('Failed to add network:', addError);
+                    const chainNamesMap = {
+                      '11155111': 'Sepolia Testnet',
+                      '5001': 'Mantle Testnet',
+                      '5000': 'Mantle Mainnet',
+                    };
+                    const networkName = chainNamesMap[expectedChainIdNum?.toString()] || `Chain ID ${expectedChainIdNum}`;
+                    throw new Error(`Failed to add ${networkName} to MetaMask. Please add it manually:\n1. Open MetaMask\n2. Click the network dropdown\n3. Click "Add Network"\n4. Enter the network details for ${networkName} (Chain ID: ${expectedChainIdNum})`);
+                  }
                 } else {
                   throw new Error(`Network with Chain ID ${expectedChainIdNum} (${expectedChainIdHex}) is not configured. Please add it manually to your wallet.`);
                 }
               } else if (switchError?.code === 4001) {
-                throw new Error('Network switch was rejected. Please switch networks manually and try again.');
+                throw new Error('Network switch was rejected. Please switch to Sepolia Testnet (Chain ID: 11155111) manually in MetaMask and try again.');
               } else {
-                throw switchError;
+                // Re-throw with more context
+                const chainNamesMap = {
+                  '11155111': 'Sepolia Testnet',
+                  '5001': 'Mantle Testnet',
+                  '5000': 'Mantle Mainnet',
+                };
+                const networkName = chainNamesMap[expectedChainIdNum?.toString()] || `Chain ID ${expectedChainIdNum}`;
+                throw new Error(`Failed to switch to ${networkName}: ${switchError.message || 'Unknown error'}. Please switch manually in MetaMask.`);
               }
             }
           }
@@ -289,64 +321,9 @@ const QuantumMintNFT = () => {
         }
       }
 
-      // Check RPC endpoint availability before proceeding
-      setMintingStatus('Checking network connection...');
-      try {
-        const ethereumProvider = getEthereumProvider();
-        if (ethereumProvider) {
-          const provider = new ethers.BrowserProvider(ethereumProvider);
-          // Test RPC connection with a simple call
-          await Promise.race([
-            provider.getBlockNumber(),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('RPC timeout')), 10000)
-            )
-          ]);
-        }
-      } catch (rpcError) {
-        const errorMsg = rpcError?.message?.toLowerCase() || '';
-        const errorCode = rpcError?.code;
-        
-        if (errorMsg.includes('rpc') || 
-            errorMsg.includes('endpoint') || 
-            errorMsg.includes('timeout') ||
-            errorCode === -32002) {
-          
-          // Get current chain ID to provide better error message
-          let currentChainId = 'unknown';
-          let chainName = 'current network';
-          try {
-            const ethereumProvider = getEthereumProvider();
-            if (ethereumProvider) {
-              const chainIdHex = await ethereumProvider.request({ method: 'eth_chainId' });
-              const chainIdNum = parseInt(chainIdHex, 16);
-              currentChainId = chainIdNum.toString();
-              
-              // Common chain IDs
-              const chainNames = {
-                '1': 'Ethereum Mainnet',
-                '31337': 'Local Hardhat Network',
-                '43114': 'Avalanche Mainnet',
-                '43113': 'Avalanche Fuji Testnet',
-                '11155111': 'Sepolia Testnet',
-                '137': 'Polygon',
-              };
-              chainName = chainNames[currentChainId] || `Chain ID ${currentChainId}`;
-            }
-          } catch (e) {
-            // Ignore errors getting chain ID
-          }
-          
-          // Suggest switching to Avalanche if on local/unavailable network
-          const isLocalNetwork = currentChainId === '31337' || currentChainId === '1337';
-          const suggestion = isLocalNetwork 
-            ? ' Please switch to Avalanche Mainnet (Chain ID: 43114) in your wallet, or ensure your local node is running.'
-            : ` The RPC endpoint for ${chainName} (Chain ID: ${currentChainId}) is unavailable. Please switch to a different network in your wallet.`;
-          
-          throw new Error(`RPC endpoint is unavailable.${suggestion}`);
-        }
-        // If it's not an RPC error, continue - might be a different issue
-      }
+      // Skip RPC check - MetaMask handles all RPC calls
+      // Pre-checking RPC can cause false positives and block valid transactions
+      // The actual transaction will fail with a clear error if there's a real RPC issue
 
       // Verify network one more time before minting
       if (ethereumProvider) {
@@ -356,7 +333,55 @@ const QuantumMintNFT = () => {
         
         if (expectedChainIdHex && chainId?.toLowerCase?.() !== expectedChainIdHex.toLowerCase()) {
           const chainIdNum = parseInt(chainId, 16);
-          throw new Error(`Wrong network detected. You are on Chain ID ${chainIdNum}, but the contract is on Chain ID ${expectedChainIdNum}. Please switch to the correct network and try again.`);
+          // Try one more time to switch networks
+          setMintingStatus('Switching to Sepolia Testnet...');
+          try {
+            const networkConfig = getNetworkConfig(expectedChainIdNum);
+            if (networkConfig) {
+              // Try switching first
+              try {
+                await ethereumProvider.request({
+                  method: 'wallet_switchEthereumChain',
+                  params: [{ chainId: networkConfig.chainId }],
+                });
+              } catch (switchErr) {
+                // If switch fails, try adding the network
+                if (switchErr?.code === 4902) {
+                  const rpcUrls = Array.isArray(networkConfig.rpcUrls) 
+                    ? networkConfig.rpcUrls 
+                    : [networkConfig.rpcUrls];
+                  const blockExplorerUrls = Array.isArray(networkConfig.blockExplorerUrls)
+                    ? networkConfig.blockExplorerUrls
+                    : [networkConfig.blockExplorerUrls];
+                  
+                  await ethereumProvider.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                      chainId: networkConfig.chainId,
+                      chainName: networkConfig.chainName,
+                      nativeCurrency: networkConfig.nativeCurrency,
+                      rpcUrls: rpcUrls,
+                      blockExplorerUrls: blockExplorerUrls,
+                    }],
+                  });
+                } else {
+                  throw switchErr;
+                }
+              }
+              // Wait a moment for the network to switch
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              // Verify again
+              const newChainId = await ethereumProvider.request({ method: 'eth_chainId' });
+              if (newChainId?.toLowerCase() !== expectedChainIdHex.toLowerCase()) {
+                throw new Error(`Failed to switch network. Please switch to Sepolia Testnet (Chain ID: 11155111) manually in MetaMask.`);
+              }
+            } else {
+              throw new Error(`Network configuration not found for Chain ID ${expectedChainIdNum}`);
+            }
+          } catch (switchError) {
+            console.error('Final network switch attempt failed:', switchError);
+            throw new Error(`Wrong network detected. You are on Chain ID ${chainIdNum}, but need Chain ID ${expectedChainIdNum} (Sepolia Testnet). Please switch networks manually in MetaMask and try again.`);
+          }
         }
       }
 
@@ -418,19 +443,39 @@ const QuantumMintNFT = () => {
         const errorCode = error?.code;
         const errorData = error?.data || {};
         
-        // RPC endpoint errors
-        if (errorCode === -32002 || 
-            errorMsg.includes('rpc endpoint') ||
-            errorMsg.includes('rpc endpoint not found') ||
-            errorMsg.includes('rpc endpoint returned too many errors') ||
-            errorMsg.includes('rpc endpoint is unavailable') ||
-            errorData?.httpStatus === 522) {
+        // RPC endpoint errors - only fail on critical errors, not timeouts
+        // MetaMask handles RPC calls, so temporary issues shouldn't block transactions
+        const isCriticalRpcError = (
+          errorCode === -32002 && // Request already pending - this is usually fine, just wait
+          !errorMsg.includes('timeout') && // Timeouts are often temporary
+          !errorMsg.includes('user rejected') // User rejection is not an RPC error
+        );
+        
+        if (isCriticalRpcError || 
+            (errorMsg.includes('rpc endpoint') && 
+             errorMsg.includes('unavailable') && 
+             !errorMsg.includes('timeout') &&
+             errorData?.httpStatus === 522)) {
+          // Only show RPC error for persistent, critical failures
           // Preserve detailed error message if it contains suggestions
           if (error.message && (error.message.includes('Please switch') || error.message.includes('Chain ID'))) {
             errorMessage = error.message;
           } else {
-            errorMessage = 'RPC endpoint is unavailable. Please switch to Avalanche Mainnet (Chain ID: 43114) or ensure your network RPC is accessible.';
+            // Get expected chain ID for better error message
+            const expectedChainId = getExpectedChainId();
+            const chainNames = {
+              '11155111': 'Sepolia Testnet',
+              '5001': 'Mantle Testnet',
+              '5000': 'Mantle Mainnet',
+              '43114': 'Avalanche Mainnet',
+            };
+            const expectedChainName = chainNames[expectedChainId?.toString()] || `Chain ID ${expectedChainId}`;
+            errorMessage = `Network connection issue. Please ensure you're on ${expectedChainName} (Chain ID: ${expectedChainId}) and try again. If the issue persists, refresh the page.`;
           }
+        } else if (errorMsg.includes('rpc') || errorMsg.includes('timeout')) {
+          // For RPC timeouts or non-critical RPC errors, just log and show generic message
+          console.warn('RPC warning (non-critical):', error);
+          errorMessage = 'Network request timed out. Please try again. If the issue persists, check your MetaMask connection and ensure you\'re on the correct network.';
         } 
         // Contract revert errors
         else if (errorMsg.includes('execution reverted') || 
@@ -445,7 +490,31 @@ const QuantumMintNFT = () => {
                  errorMsg.includes('chain id') ||
                  errorMsg.includes('wrong network') ||
                  errorCode === 4902) {
-          errorMessage = 'Unrecognized network. Please switch to the correct network in your wallet and try again.';
+          // Get expected chain ID for better error message
+          const expectedChainId = getExpectedChainId();
+          const chainNamesMap = {
+            '11155111': 'Sepolia Testnet',
+            '5001': 'Mantle Testnet',
+            '5000': 'Mantle Mainnet',
+            '43114': 'Avalanche Mainnet',
+            '1': 'Ethereum Mainnet',
+          };
+          const expectedChainName = chainNamesMap[expectedChainId?.toString()] || `Chain ID ${expectedChainId}`;
+          
+          // Try to get current chain ID for better context
+          let currentChainInfo = '';
+          try {
+            const ethereumProvider = getEthereumProvider();
+            if (ethereumProvider) {
+              const currentChainId = await ethereumProvider.request({ method: 'eth_chainId' });
+              const currentChainIdNum = parseInt(currentChainId, 16);
+              currentChainInfo = ` You are currently on Chain ID ${currentChainIdNum}.`;
+            }
+          } catch (e) {
+            // Ignore errors getting chain ID
+          }
+          
+          errorMessage = `Unrecognized network.${currentChainInfo} Please switch to ${expectedChainName} (Chain ID: ${expectedChainId}) in MetaMask:\n\n1. Click the MetaMask extension\n2. Click the network dropdown at the top\n3. Select "${expectedChainName}" (or add it if not listed)\n4. Refresh this page and try again.`;
         } 
         // User rejection
         else if (errorMsg.includes('rejected') || 
