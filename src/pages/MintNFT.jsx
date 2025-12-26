@@ -472,10 +472,27 @@ const QuantumMintNFT = () => {
             const expectedChainName = chainNames[expectedChainId?.toString()] || `Chain ID ${expectedChainId}`;
             errorMessage = `Network connection issue. Please ensure you're on ${expectedChainName} (Chain ID: ${expectedChainId}) and try again. If the issue persists, refresh the page.`;
           }
-        } else if (errorMsg.includes('rpc') || errorMsg.includes('timeout')) {
-          // For RPC timeouts or non-critical RPC errors, just log and show generic message
+        } else if (errorMsg.includes('timeout')) {
+          // Timeout errors - could be user hasn't approved transaction yet, or network issue
+          // Check if it's a user action timeout (waiting for MetaMask)
+          if (errorMsg.includes('user') || errorMsg.includes('approval') || errorMsg.includes('confirm')) {
+            errorMessage = 'Transaction approval timed out. Please check MetaMask and approve the transaction if prompted.';
+          } else {
+            // Network timeout - provide helpful guidance
+            console.warn('Network timeout (non-critical):', error);
+            const expectedChainId = getExpectedChainId();
+            const chainNames = {
+              '11155111': 'Sepolia Testnet',
+              '5001': 'Mantle Testnet',
+              '5000': 'Mantle Mainnet',
+            };
+            const expectedChainName = chainNames[expectedChainId?.toString()] || `Chain ID ${expectedChainId}`;
+            errorMessage = `Network request timed out. This might be temporary. Please:\n1. Ensure you're on ${expectedChainName} (Chain ID: ${expectedChainId}) in MetaMask\n2. Check that MetaMask is unlocked and connected\n3. If a transaction popup appeared, please approve it\n4. Try again in a few moments\n5. If the issue persists, refresh the page`;
+          }
+        } else if (errorMsg.includes('rpc') && !errorMsg.includes('timeout')) {
+          // Non-timeout RPC errors - log but don't block
           console.warn('RPC warning (non-critical):', error);
-          errorMessage = 'Network request timed out. Please try again. If the issue persists, check your MetaMask connection and ensure you\'re on the correct network.';
+          errorMessage = 'Network connection issue. Please try again. If the issue persists, refresh the page and ensure MetaMask is connected.';
         } 
         // Contract revert errors
         else if (errorMsg.includes('execution reverted') || 

@@ -267,7 +267,9 @@ export const mintTicketWithMantle = async (
       }
     }
 
-    const tx = await avaraCore.mintTicketWithMantle(
+    // Set a longer timeout for MetaMask approval (users may need time to approve)
+    // The transaction itself will wait for user approval, but we want to give enough time
+    const txPromise = avaraCore.mintTicketWithMantle(
       to,
       uri,
       eventId,
@@ -275,6 +277,13 @@ export const mintTicketWithMantle = async (
       nonce,
       mantleSignature
     );
+    
+    // Add timeout handling - but give plenty of time for user approval
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Transaction approval timeout. Please check MetaMask and approve the transaction if prompted.')), 120000) // 2 minutes
+    );
+    
+    const tx = await Promise.race([txPromise, timeoutPromise]);
     return tx;
   } catch (error) {
     console.error('Error minting ticket:', error);
