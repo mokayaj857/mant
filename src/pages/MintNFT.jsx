@@ -348,6 +348,18 @@ const QuantumMintNFT = () => {
         // If it's not an RPC error, continue - might be a different issue
       }
 
+      // Verify network one more time before minting
+      if (ethereumProvider) {
+        const chainId = await ethereumProvider.request({ method: 'eth_chainId' });
+        const expectedChainIdNum = getExpectedChainId();
+        const expectedChainIdHex = expectedChainIdNum ? `0x${expectedChainIdNum.toString(16)}` : null;
+        
+        if (expectedChainIdHex && chainId?.toLowerCase?.() !== expectedChainIdHex.toLowerCase()) {
+          const chainIdNum = parseInt(chainId, 16);
+          throw new Error(`Wrong network detected. You are on Chain ID ${chainIdNum}, but the contract is on Chain ID ${expectedChainIdNum}. Please switch to the correct network and try again.`);
+        }
+      }
+
       setMintingStatus('Requesting Mantle mint proof...');
       const proofRes = await fetch('/api/mantle/mint-proof', {
         method: 'POST',
@@ -362,7 +374,14 @@ const QuantumMintNFT = () => {
         throw new Error(proofJson?.error || 'Failed to obtain Mantle mint proof');
       }
 
-      const { timestamp, nonce, signature } = proofJson.data;
+      const { timestamp, nonce, signature, signerAddress, signerMismatch } = proofJson.data;
+      
+      // Warn if signer mismatch detected
+      if (signerMismatch) {
+        console.warn('⚠️ Signer address mismatch detected. The server signer may not match the contract\'s Mantle signer.');
+        console.warn('Server signer:', signerAddress);
+        console.warn('This may cause signature verification to fail.');
+      }
 
       setMintingStatus('Please confirm the transaction in your wallet...');
 
@@ -413,9 +432,18 @@ const QuantumMintNFT = () => {
             errorMessage = 'RPC endpoint is unavailable. Please switch to Avalanche Mainnet (Chain ID: 43114) or ensure your network RPC is accessible.';
           }
         } 
+        // Contract revert errors
+        else if (errorMsg.includes('execution reverted') || 
+                 errorMsg.includes('signature verification failed') ||
+                 errorMsg.includes('invalid mantle') ||
+                 errorMsg.includes('proof used')) {
+          // Preserve the detailed error message from the contract
+          errorMessage = error.message || 'Transaction failed. Please check:\n1. You are on the correct network (Mantle Testnet - Chain ID 5001)\n2. The contract\'s Mantle signer matches the server signer\n3. The proof has not been used before';
+        }
         // Network/Chain ID errors
         else if (errorMsg.includes('unrecognized chain id') || 
                  errorMsg.includes('chain id') ||
+                 errorMsg.includes('wrong network') ||
                  errorCode === 4902) {
           errorMessage = 'Unrecognized network. Please switch to the correct network in your wallet and try again.';
         } 

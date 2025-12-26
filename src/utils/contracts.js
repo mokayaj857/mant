@@ -256,6 +256,17 @@ export const mintTicketWithMantle = async (
   mantleSignature
 ) => {
   try {
+    // First, verify we're on the correct network by checking the contract's chain
+    const provider = avaraCore.provider || avaraCore.runner?.provider;
+    if (provider) {
+      try {
+        const network = await provider.getNetwork();
+        console.log('Current network:', network.chainId);
+      } catch (e) {
+        console.warn('Could not verify network:', e);
+      }
+    }
+
     const tx = await avaraCore.mintTicketWithMantle(
       to,
       uri,
@@ -272,6 +283,30 @@ export const mintTicketWithMantle = async (
     const errorCode = error?.code;
     const errorMessage = error?.message?.toLowerCase() || '';
     const errorData = error?.data || {};
+    const errorReason = error?.reason || '';
+    
+    // Contract revert errors - check for specific reasons
+    if (errorMessage.includes('execution reverted') || errorCode === 'CALL_EXCEPTION') {
+      // Check if it's a signature verification failure
+      if (errorMessage.includes('invalid mantle mint proof') || 
+          errorReason.includes('invalid mantle mint proof') ||
+          errorMessage.includes('invalid mantle') ||
+          errorReason.includes('invalid mantle')) {
+        throw new Error('Signature verification failed. The contract\'s Mantle signer may not match the server signer. Please contact support.');
+      }
+      
+      // Check if proof was already used
+      if (errorMessage.includes('proof used') || errorReason.includes('proof used')) {
+        throw new Error('This proof has already been used. Please request a new mint proof.');
+      }
+      
+      // Generic revert - provide helpful message
+      throw new Error('Transaction failed. This could be due to:\n' +
+        '1. Wrong network - Please ensure you\'re on Mantle Testnet (Chain ID: 5001)\n' +
+        '2. Invalid signature - The contract\'s Mantle signer may not match\n' +
+        '3. Proof already used - Try requesting a new mint proof\n' +
+        `Error: ${errorMessage || errorReason || 'Unknown error'}`);
+    }
     
     // RPC endpoint errors
     if (errorCode === -32002 || 
