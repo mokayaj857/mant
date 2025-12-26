@@ -1,7 +1,42 @@
 import { ethers } from 'ethers';
-import AvaraCoreABI from '../abi/AvaraCore.json';
-import TicketNFTABI from '../abi/TicketNFT.json';
-import POAPNFTABI from '../abi/POAPNFT.json';
+import AvaraCoreJSON from '../abi/AvaraCore.json';
+import TicketNFTJSON from '../abi/TicketNFT.json';
+import POAPNFTJSON from '../abi/POAPNFT.json';
+
+// Extract ABI from JSON - handle both full artifact format and ABI-only format
+const getABI = (json) => {
+  // Handle default export (ES modules)
+  const data = json.default || json;
+  
+  // If it's already an array, return it
+  if (Array.isArray(data)) {
+    return data;
+  }
+  
+  // If it's an object with an 'abi' property
+  if (data && typeof data === 'object' && Array.isArray(data.abi)) {
+    return data.abi;
+  }
+  
+  // Fallback: return as-is (might be an array already)
+  console.warn('Unexpected ABI format:', typeof data, Array.isArray(data));
+  return data;
+};
+
+const AvaraCoreABI = getABI(AvaraCoreJSON);
+const TicketNFTABI = getABI(TicketNFTJSON);
+const POAPNFTABI = getABI(POAPNFTJSON);
+
+// Validate ABIs are arrays
+if (!Array.isArray(AvaraCoreABI)) {
+  console.error('AvaraCoreABI is not an array:', typeof AvaraCoreABI);
+}
+if (!Array.isArray(TicketNFTABI)) {
+  console.error('TicketNFTABI is not an array:', typeof TicketNFTABI);
+}
+if (!Array.isArray(POAPNFTABI)) {
+  console.error('POAPNFTABI is not an array:', typeof POAPNFTABI);
+}
 
 // Contract addresses - these should be set via environment variables
 // For now, using placeholder addresses that need to be updated after deployment
@@ -148,6 +183,17 @@ export const getContracts = async (provider, signer = null, addressOverrides = n
   assertAddressesConfigured(addresses);
 
   const contractProvider = signer || provider;
+
+  // Validate ABIs are arrays before creating contracts
+  if (!Array.isArray(AvaraCoreABI)) {
+    throw new Error(`AvaraCoreABI is not an array. Got: ${typeof AvaraCoreABI}. Please check the ABI file.`);
+  }
+  if (!Array.isArray(TicketNFTABI)) {
+    throw new Error(`TicketNFTABI is not an array. Got: ${typeof TicketNFTABI}. Please check the ABI file.`);
+  }
+  if (!Array.isArray(POAPNFTABI)) {
+    throw new Error(`POAPNFTABI is not an array. Got: ${typeof POAPNFTABI}. Please check the ABI file.`);
+  }
 
   const avaraCore = new ethers.Contract(
     addresses.AVARA_CORE,

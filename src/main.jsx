@@ -10,15 +10,30 @@ if (typeof window !== 'undefined') {
   const originalDefineProperty = Object.defineProperty;
   Object.defineProperty = function(obj, prop, descriptor) {
     // If trying to define 'ethereum' on window and it already exists, allow it silently
-    if (obj === window && prop === 'ethereum' && window.ethereum) {
+    if (obj === window && prop === 'ethereum') {
       try {
+        // If ethereum already exists, just return it instead of redefining
+        if (window.ethereum) {
+          return window.ethereum;
+        }
         return originalDefineProperty.call(this, obj, prop, descriptor);
       } catch (e) {
         // Silently ignore - browser extensions are conflicting
+        if (window.ethereum) {
+          return window.ethereum;
+        }
         return obj;
       }
     }
-    return originalDefineProperty.call(this, obj, prop, descriptor);
+    try {
+      return originalDefineProperty.call(this, obj, prop, descriptor);
+    } catch (e) {
+      // If it's about ethereum property, return existing value
+      if (obj === window && prop === 'ethereum' && window.ethereum) {
+        return window.ethereum;
+      }
+      throw e;
+    }
   };
 
   // Suppress console errors - check all arguments for the error message
